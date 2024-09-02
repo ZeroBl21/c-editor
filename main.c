@@ -13,7 +13,10 @@
 // defines
 
 #define CLEAR_SCREEN_CMD "\x1b[2J"
+
 #define CURSOR_HOME_CMD "\x1b[H"
+#define CURSOR_MOVE_TO_END "\x1b[999C\x1b[999B"
+#define CURSOR_REPORT_POSITION "\x1b[6n"
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -80,11 +83,50 @@ wchar_t editor_read_key(void) {
   return c;
 }
 
+int get_cursor_position(uint16_t *rows, uint16_t *cols) {
+  wchar_t buf[32];
+  uint32_t i = 0;
+
+  if (write(STDOUT_FILENO, CURSOR_REPORT_POSITION, 4) != 4) {
+    return -1;
+  }
+
+  while (i < sizeof(buf) / sizeof(wchar_t) - 1) {
+    wint_t c = (wchar_t)fgetwc(stdin);
+    if (c == WEOF) {
+      break;
+    }
+
+    buf[i] = (wchar_t)c;
+    if (buf[i] == L'R') {
+      break;
+    }
+
+    i++;
+  }
+  buf[i] = L'\0';
+
+  if (buf[0] != L'\x1b' || buf[1] != L'[') {
+    return -1;
+  }
+  if (swscanf(&buf[2], L"%d;%d", rows, cols) != 2) {
+    return -1;
+  }
+
+  return 0;
+}
+
 int get_window_size(uint16_t *rows, uint16_t *cols) {
   struct winsize ws;
 
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-    return -1;
+    // Fallback to get window size moving the cursor to the end of the window.
+
+    if (write(STDOUT_FILENO, CURSOR_MOVE_TO_END, 12) != 12) {
+      return -1;
+    }
+
+    return get_cursor_position(rows, cols);
   }
 
   *cols = ws.ws_col;
@@ -127,7 +169,7 @@ void editor_process_keypress(void) {
 // init
 
 void init_editor(void) {
-  if (get_window_size(&E.screen_rows, &E.screen_cols)) {
+  if (get_window_size(&E.screen_rows, &E.screen_cols) == -1) {
     die("get_window_size");
   }
 }
