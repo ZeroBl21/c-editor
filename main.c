@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <wctype.h>
@@ -139,7 +140,11 @@ int get_window_size(uint16_t *rows, uint16_t *cols) {
 
 void editor_draw_rows(void) {
   for (size_t y = 0; y < E.screen_rows; y++) {
-    write(STDOUT_FILENO, "~\r\n", 3);
+    write(STDOUT_FILENO, L"~", sizeof(wchar_t));
+
+    if (y < E.screen_rows - 1) {
+      write(STDOUT_FILENO, L"\r\n", 2 * sizeof(wchar_t));
+    }
   }
 }
 
