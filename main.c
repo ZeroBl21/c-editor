@@ -3,13 +3,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-#include <wctype.h>
 
 #include <unistd.h>
-#include <wchar.h>
 
 // defines
 
@@ -69,37 +66,30 @@ void enable_raw_mode(void) {
   }
 }
 
-wchar_t editor_read_key(void) {
-  wchar_t c = L'\0';
-
-  c = fgetwc(stdin);
-  if (c == (wchar_t)WEOF && errno != EAGAIN) {
-    if (feof(stdin)) {
-      die("fgetwc - EOF");
-    } else if (ferror(stdin)) {
-      die("fgetwc - error reading");
+char editor_read_key(void) {
+  int nread;
+  char c;
+  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+    if (nread == -1 && errno != EAGAIN) {
+      die("read");
     }
   }
-
   return c;
 }
 
 int get_cursor_position(uint16_t *rows, uint16_t *cols) {
-  wchar_t buf[32];
+  char buf[32];
   uint32_t i = 0;
 
   if (write(STDOUT_FILENO, CURSOR_REPORT_POSITION, 4) != 4) {
     return -1;
   }
 
-  while (i < sizeof(buf) / sizeof(wchar_t) - 1) {
-    wint_t c = (wchar_t)fgetwc(stdin);
-    if (c == WEOF) {
+  while (i < sizeof(buf) - 1) {
+    if (read(STDIN_FILENO, &buf[i], 1) != 1) {
       break;
     }
-
-    buf[i] = (wchar_t)c;
-    if (buf[i] == L'R') {
+    if (buf[i] == 'R') {
       break;
     }
 
@@ -107,10 +97,10 @@ int get_cursor_position(uint16_t *rows, uint16_t *cols) {
   }
   buf[i] = L'\0';
 
-  if (buf[0] != L'\x1b' || buf[1] != L'[') {
+  if (buf[0] != '\x1b' || buf[1] != '[') {
     return -1;
   }
-  if (swscanf(&buf[2], L"%d;%d", rows, cols) != 2) {
+  if (sscanf(&buf[2], "%d;%d", (int *)rows, (int *)cols) != 2) {
     return -1;
   }
 
@@ -140,10 +130,10 @@ int get_window_size(uint16_t *rows, uint16_t *cols) {
 
 void editor_draw_rows(void) {
   for (size_t y = 0; y < E.screen_rows; y++) {
-    write(STDOUT_FILENO, L"~", sizeof(wchar_t));
+    write(STDOUT_FILENO, "ñ", sizeof("ñ"));
 
     if (y < E.screen_rows - 1) {
-      write(STDOUT_FILENO, L"\r\n", 2 * sizeof(wchar_t));
+      write(STDOUT_FILENO, "\r\n", 2);
     }
   }
 }
@@ -160,10 +150,10 @@ void editor_refresh_screen(void) {
 // input
 
 void editor_process_keypress(void) {
-  wchar_t c = editor_read_key();
+  char c = editor_read_key();
 
   switch (c) {
-  case CTRL_KEY(L'q'):
+  case CTRL_KEY('q'):
     write(STDOUT_FILENO, CLEAR_SCREEN_CMD, 4);
     write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
     exit(EXIT_SUCCESS);
