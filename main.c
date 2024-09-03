@@ -159,10 +159,8 @@ void ab_free(struct abuf *ab) {
 void editor_draw_rows(struct abuf *ab) {
   for (size_t y = 0; y < E.screen_rows; y++) {
     ab_append(ab, "~", sizeof("~"));
-    // write(STDOUT_FILENO, "ñ", sizeof("ñ"));
 
     if (y < E.screen_rows - 1) {
-      // write(STDOUT_FILENO, "\r\n", 2);
       ab_append(ab, "\r\n", 2);
     }
   }
