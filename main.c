@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 
@@ -126,25 +127,59 @@ int get_window_size(uint16_t *rows, uint16_t *cols) {
   return 0;
 }
 
+#define ABUF_INIT                                                              \
+  { NULL, 0 }
+
+struct abuf {
+  char *buffer;
+  int len;
+};
+
+void ab_append(struct abuf *ab, const char *s, int len) {
+  char *new_buffer = realloc(ab->buffer, ab->len + len);
+
+  if (new_buffer == NULL) {
+    return;
+  }
+
+  memcpy(&new_buffer[ab->len], s, len);
+
+  ab->buffer = new_buffer;
+  ab->len += len;
+}
+
+void ab_free(struct abuf *ab) {
+  free(ab->buffer);
+  ab->buffer = NULL;
+  ab->len = 0;
+}
+
 // output
 
-void editor_draw_rows(void) {
+void editor_draw_rows(struct abuf *ab) {
   for (size_t y = 0; y < E.screen_rows; y++) {
-    write(STDOUT_FILENO, "ñ", sizeof("ñ"));
+    ab_append(ab, "~", sizeof("~"));
+    // write(STDOUT_FILENO, "ñ", sizeof("ñ"));
 
     if (y < E.screen_rows - 1) {
-      write(STDOUT_FILENO, "\r\n", 2);
+      // write(STDOUT_FILENO, "\r\n", 2);
+      ab_append(ab, "\r\n", 2);
     }
   }
 }
 
 void editor_refresh_screen(void) {
-  write(STDOUT_FILENO, CLEAR_SCREEN_CMD, 4);
-  write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
+  struct abuf ab = ABUF_INIT;
 
-  editor_draw_rows();
+  ab_append(&ab, CLEAR_SCREEN_CMD, 4);
+  ab_append(&ab, CURSOR_HOME_CMD, 3);
 
-  write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
+  editor_draw_rows(&ab);
+
+  ab_append(&ab, CURSOR_HOME_CMD, 3);
+
+  write(STDOUT_FILENO, ab.buffer, ab.len);
+  ab_free(&ab);
 }
 
 // input
