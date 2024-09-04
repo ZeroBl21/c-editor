@@ -11,13 +11,18 @@
 
 // defines
 
-#define CLEAR_SCREEN_CMD "\x1b[2J"
-
-#define CURSOR_HOME_CMD "\x1b[H"
-#define CURSOR_MOVE_TO_END "\x1b[999C\x1b[999B"
-#define CURSOR_REPORT_POSITION "\x1b[6n"
-
 #define CTRL_KEY(k) ((k) & 0x1f)
+
+// Constants
+
+const char *CLEAR_SCREEN_CMD = "\x1b[2J";
+const char *CLEAR_LINE_RIGHT = "\x1b[K";
+
+const char *CURSOR_HOME_CMD = "\x1b[H";
+const char *CURSOR_MOVE_TO_END = "\x1b[999C\x1b[999B";
+const char *CURSOR_REPORT_POSITION = "\x1b[6n";
+const char *CURSOR_SHOW = "\x1b[?25h";
+const char *CURSOR_HIDE = "\x1b[?25l";
 
 // data
 
@@ -160,6 +165,7 @@ void editor_draw_rows(struct abuf *ab) {
   for (size_t y = 0; y < E.screen_rows; y++) {
     ab_append(ab, "~", sizeof("~"));
 
+    ab_append(ab, CLEAR_LINE_RIGHT, 3);
     if (y < E.screen_rows - 1) {
       ab_append(ab, "\r\n", 2);
     }
@@ -169,12 +175,13 @@ void editor_draw_rows(struct abuf *ab) {
 void editor_refresh_screen(void) {
   struct abuf ab = ABUF_INIT;
 
-  ab_append(&ab, CLEAR_SCREEN_CMD, 4);
+  ab_append(&ab, CURSOR_HIDE, 6);
   ab_append(&ab, CURSOR_HOME_CMD, 3);
 
   editor_draw_rows(&ab);
 
   ab_append(&ab, CURSOR_HOME_CMD, 3);
+  ab_append(&ab, CURSOR_SHOW, 6);
 
   write(STDOUT_FILENO, ab.buffer, ab.len);
   ab_free(&ab);
