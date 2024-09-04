@@ -29,8 +29,12 @@ const char *CURSOR_HIDE = "\x1b[?25l";
 // data
 
 struct editorConfig {
+  int cursor_x;
+  int cursor_y;
+
   uint16_t screen_rows;
   uint16_t screen_cols;
+
   struct termios orig_termios;
 } E;
 
@@ -208,7 +212,11 @@ void editor_refresh_screen(void) {
 
   editor_draw_rows(&ab);
 
-  ab_append(&ab, CURSOR_HOME_CMD, 3);
+  char buf[32];
+  // Format cursor position escape sequence into buf
+  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursor_y + 1, E.cursor_x + 1);
+  ab_append(&ab, buf, strlen(buf));
+
   ab_append(&ab, CURSOR_SHOW, 6);
 
   write(STDOUT_FILENO, ab.buffer, ab.len);
@@ -216,6 +224,30 @@ void editor_refresh_screen(void) {
 }
 
 // input
+
+void editor_move_cursor(char key) {
+  switch (key) {
+  // Up
+  case 'k':
+    E.cursor_y--;
+    break;
+
+  // Down
+  case 'j':
+    E.cursor_y++;
+    break;
+
+  // Left
+  case 'h':
+    E.cursor_x--;
+    break;
+
+  // Right
+  case 'l':
+    E.cursor_x++;
+    break;
+  }
+}
 
 void editor_process_keypress(void) {
   char c = editor_read_key();
@@ -226,12 +258,24 @@ void editor_process_keypress(void) {
     write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
     exit(EXIT_SUCCESS);
     break;
+
+  case 'h':
+  case 'j':
+  case 'k':
+  case 'l':
+    editor_move_cursor(c);
+    break;
   }
 }
 
 // init
 
 void init_editor(void) {
+  E = (struct editorConfig){
+      .cursor_x = 0,
+      .cursor_y = 0,
+  };
+
   if (get_window_size(&E.screen_rows, &E.screen_cols) == -1) {
     die("get_window_size");
   }
