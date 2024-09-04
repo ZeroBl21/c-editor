@@ -15,6 +15,8 @@
 
 // Constants
 
+const char *KILO_VERSION = "0.0.1";
+
 const char *CLEAR_SCREEN_CMD = "\x1b[2J";
 const char *CLEAR_LINE_RIGHT = "\x1b[K";
 
@@ -161,9 +163,35 @@ void ab_free(struct abuf *ab) {
 
 // output
 
+void editor_draw_welcome(struct abuf *ab) {
+  char welcome[80];
+  int welcome_len = snprintf(welcome, sizeof(welcome),
+                             "Kilo editor -- version %s", KILO_VERSION);
+
+  if (welcome_len > E.screen_cols) {
+    welcome_len = E.screen_cols;
+  }
+
+  int padding = (E.screen_cols - welcome_len) / 2;
+  if (padding) {
+    ab_append(ab, "~", 1);
+    padding--;
+  }
+
+  for (int i = 0; i < padding; i++) {
+    ab_append(ab, " ", 1);
+  }
+
+  ab_append(ab, welcome, welcome_len);
+}
+
 void editor_draw_rows(struct abuf *ab) {
   for (size_t y = 0; y < E.screen_rows; y++) {
-    ab_append(ab, "~", sizeof("~"));
+    if (y == E.screen_rows / 3) {
+      editor_draw_welcome(ab);
+    } else {
+      ab_append(ab, "~", 1);
+    }
 
     ab_append(ab, CLEAR_LINE_RIGHT, 3);
     if (y < E.screen_rows - 1) {
