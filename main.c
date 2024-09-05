@@ -31,6 +31,9 @@ enum editorKey {
   ARROW_DOWN,
   ARROW_LEFT,
   ARROW_RIGHT,
+
+  PAGE_UP,
+  PAGE_DOWN,
 };
 
 // data
@@ -85,6 +88,15 @@ void enable_raw_mode(void) {
   }
 }
 
+int read_escape_sequence(char *seq, int length) {
+  for (int i = 0; i < length; i++) {
+    if (read(STDIN_FILENO, &seq[i], 1) != 1) {
+      return 0; // Si la lectura falla, retorna falso
+    }
+  }
+  return 1;
+}
+
 int editor_read_key(void) {
   int nread;
   char c;
@@ -94,26 +106,41 @@ int editor_read_key(void) {
     }
   }
 
-  // Move with arrow keys
   if (c == '\x1b') {
     char seq[3];
 
-    if (read(STDIN_FILENO, &seq[0], 1) != 1)
+    if (!read_escape_sequence(seq, 2)) {
       return '\x1b';
-    if (read(STDIN_FILENO, &seq[1], 1) != 1)
-      return '\x1b';
+    }
 
-    if (seq[0] == '[') {
-      switch (seq[1]) {
-      case 'A':
-        return ARROW_UP;
-      case 'B':
-        return ARROW_DOWN;
-      case 'C':
-        return ARROW_RIGHT;
-      case 'D':
-        return ARROW_LEFT;
+    if (seq[0] != '[') {
+      return '\x1b';
+    }
+
+    if (seq[1] >= '0' && seq[1] <= '9') {
+      if (!read_escape_sequence(&seq[2], 1) || seq[2] != '~') {
+        return '\x1b';
       }
+
+      switch (seq[1]) {
+      case '5':
+        return PAGE_UP;
+      case '6':
+        return PAGE_DOWN;
+      default:
+        return '\x1b'; // Esc para secuencia no reconocida
+      }
+    }
+
+    switch (seq[1]) {
+    case 'A':
+      return ARROW_UP;
+    case 'B':
+      return ARROW_DOWN;
+    case 'C':
+      return ARROW_RIGHT;
+    case 'D':
+      return ARROW_LEFT;
     }
 
     return '\x1b';
@@ -307,6 +334,15 @@ void editor_process_keypress(void) {
     write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
     exit(EXIT_SUCCESS);
     break;
+
+  case PAGE_UP:
+  case PAGE_DOWN: {
+    uint16_t times = E.screen_rows;
+    while (times--) {
+      editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+    }
+    break;
+  }
 
   case ARROW_UP:
   case ARROW_DOWN:
