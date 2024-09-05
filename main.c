@@ -17,6 +17,8 @@
 
 const char *KILO_VERSION = "0.0.1";
 
+const int ESC_KEY = '\x1b';
+
 const char *CLEAR_SCREEN_CMD = "\x1b[2J";
 const char *CLEAR_LINE_RIGHT = "\x1b[K";
 
@@ -31,6 +33,9 @@ enum editorKey {
   ARROW_DOWN,
   ARROW_LEFT,
   ARROW_RIGHT,
+
+  HOME_KEY,
+  END_KEY,
 
   PAGE_UP,
   PAGE_DOWN,
@@ -97,6 +102,62 @@ int read_escape_sequence(char *seq, int length) {
   return 1;
 }
 
+int handle_bracket_sequences(char seq[]) {
+  // numeric
+  if (seq[1] >= '0' && seq[1] <= '9') {
+    if (!read_escape_sequence(&seq[2], 1) || seq[2] != '~') {
+      return ESC_KEY;
+    }
+
+    switch (seq[1]) {
+    case '1':
+    case '7':
+      return HOME_KEY;
+
+    case '4':
+    case '8':
+      return END_KEY;
+
+    case '5':
+      return PAGE_UP;
+    case '6':
+      return PAGE_DOWN;
+    default:
+      return ESC_KEY;
+    }
+  }
+
+  // non-numeric
+  switch (seq[1]) {
+  case 'A':
+    return ARROW_UP;
+  case 'B':
+    return ARROW_DOWN;
+  case 'C':
+    return ARROW_RIGHT;
+  case 'D':
+    return ARROW_LEFT;
+
+  case 'H':
+    return HOME_KEY;
+  case 'F':
+    return END_KEY;
+  default:
+    return ESC_KEY;
+  }
+}
+
+int handle_o_sequences(char seq[]) {
+  switch (seq[1]) {
+  case 'H':
+    return HOME_KEY;
+  case 'F':
+    return END_KEY;
+  default:
+    return ESC_KEY;
+  }
+}
+
 int editor_read_key(void) {
   int nread;
   char c;
@@ -106,44 +167,19 @@ int editor_read_key(void) {
     }
   }
 
-  if (c == '\x1b') {
+  if (c == ESC_KEY) {
     char seq[3];
 
     if (!read_escape_sequence(seq, 2)) {
-      return '\x1b';
+      return ESC_KEY;
     }
 
-    if (seq[0] != '[') {
-      return '\x1b';
+    if (seq[0] == '[') {
+      return handle_bracket_sequences(seq);
     }
-
-    if (seq[1] >= '0' && seq[1] <= '9') {
-      if (!read_escape_sequence(&seq[2], 1) || seq[2] != '~') {
-        return '\x1b';
-      }
-
-      switch (seq[1]) {
-      case '5':
-        return PAGE_UP;
-      case '6':
-        return PAGE_DOWN;
-      default:
-        return '\x1b'; // Esc para secuencia no reconocida
-      }
+    if (seq[0] == 'O') {
+      return handle_o_sequences(seq);
     }
-
-    switch (seq[1]) {
-    case 'A':
-      return ARROW_UP;
-    case 'B':
-      return ARROW_DOWN;
-    case 'C':
-      return ARROW_RIGHT;
-    case 'D':
-      return ARROW_LEFT;
-    }
-
-    return '\x1b';
   }
 
   return c;
@@ -169,7 +205,7 @@ int get_cursor_position(uint16_t *rows, uint16_t *cols) {
   }
   buf[i] = L'\0';
 
-  if (buf[0] != '\x1b' || buf[1] != '[') {
+  if (buf[0] != ESC_KEY || buf[1] != '[') {
     return -1;
   }
   if (sscanf(&buf[2], "%d;%d", (int *)rows, (int *)cols) != 2) {
@@ -343,6 +379,14 @@ void editor_process_keypress(void) {
     }
     break;
   }
+
+  case HOME_KEY:
+    E.cursor_x = 0;
+    break;
+
+  case END_KEY:
+    E.cursor_x = E.screen_cols - 1;
+    break;
 
   case ARROW_UP:
   case ARROW_DOWN:
