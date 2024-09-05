@@ -262,21 +262,37 @@ void editor_move_cursor(int key) {
   switch (key) {
   // Up
   case ARROW_UP:
+    if (E.cursor_y == 0) {
+      return;
+    }
+
     E.cursor_y--;
     break;
 
   // Down
   case ARROW_DOWN:
+    if (E.cursor_y == E.screen_rows - 1) {
+      return;
+    }
+
     E.cursor_y++;
     break;
 
   // Left
   case ARROW_LEFT:
+    if (E.cursor_x == 0) {
+      return;
+    }
+
     E.cursor_x--;
     break;
 
   // Right
   case ARROW_RIGHT:
+    if (E.cursor_x == E.screen_cols - 1) {
+      return;
+    }
+
     E.cursor_x++;
     break;
   }
