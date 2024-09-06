@@ -1,3 +1,7 @@
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include <errno.h>
 #include <locale.h>
 #include <stdint.h>
@@ -6,6 +10,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <time.h>
 
 #include <unistd.h>
 
@@ -42,7 +47,12 @@ enum editorKey {
   PAGE_DOWN,
 };
 
-// data
+// types
+
+typedef struct editorRow {
+  int size;
+  char *chars;
+} editorRow;
 
 struct editorConfig {
   int cursor_x;
@@ -50,6 +60,9 @@ struct editorConfig {
 
   uint16_t screen_rows;
   uint16_t screen_cols;
+
+  int num_rows;
+  editorRow *row;
 
   struct termios orig_termios;
 } E;
@@ -237,6 +250,54 @@ int get_window_size(uint16_t *rows, uint16_t *cols) {
   return 0;
 }
 
+// row operations
+
+void editor_append_row(char *s, size_t len) {
+  E.row = realloc(E.row, sizeof(editorRow) * (E.num_rows + 1));
+
+  int at = E.num_rows;
+
+  E.row[at].size = len;
+  E.row[at].chars = malloc(len + 1);
+
+  memcpy(E.row[at].chars, s, len);
+
+  E.row[at].chars[len] = '\0';
+  E.num_rows++;
+}
+
+// file i/o
+
+void editor_open(char *filename) {
+  FILE *file_pointer = fopen(filename, "r");
+  if (!file_pointer) {
+    die("fopen");
+  }
+
+  char *line = NULL;
+  size_t line_cap = 0;
+
+  ssize_t line_len;
+  while ((line_len = getline(&line, &line_cap, file_pointer)) != -1) {
+
+    while (line_len > 0) {
+      char last_char = line[line_len - 1];
+      if (last_char != '\n' && last_char != '\r') {
+        break;
+      }
+
+      line_len--;
+    }
+
+    editor_append_row(line, line_len);
+  }
+
+  free(line);
+  fclose(file_pointer);
+}
+
+// append buffer
+
 #define ABUF_INIT                                                              \
   { NULL, 0 }
 
@@ -290,13 +351,23 @@ void editor_draw_welcome(struct abuf *ab) {
 
 void editor_draw_rows(struct abuf *ab) {
   for (size_t y = 0; y < E.screen_rows; y++) {
-    if (y == E.screen_rows / 3) {
+
+    if (y < E.num_rows) {
+      int len = E.row[y].size;
+      if (len > E.screen_cols) {
+        len = E.screen_cols;
+      }
+      ab_append(ab, E.row[y].chars, len);
+
+    } else if (E.num_rows == 0 && y == E.screen_rows / 3) {
       editor_draw_welcome(ab);
+
     } else {
       ab_append(ab, "~", 1);
     }
 
     ab_append(ab, CLEAR_LINE_RIGHT, 3);
+
     if (y < E.screen_rows - 1) {
       ab_append(ab, "\r\n", 2);
     }
@@ -406,6 +477,8 @@ void init_editor(void) {
   E = (struct editorConfig){
       .cursor_x = 0,
       .cursor_y = 0,
+      .num_rows = 0,
+      .row = NULL,
   };
 
   if (get_window_size(&E.screen_rows, &E.screen_cols) == -1) {
@@ -413,11 +486,15 @@ void init_editor(void) {
   }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
   setlocale(LC_ALL, "");
 
   enable_raw_mode();
   init_editor();
+
+  if (argc >= 2) {
+    editor_open(argv[1]);
+  }
 
   while (1) {
     editor_refresh_screen();
