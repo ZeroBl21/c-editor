@@ -36,6 +36,7 @@ enum editorKey {
 
   HOME_KEY,
   END_KEY,
+  DEL_KEY,
 
   PAGE_UP,
   PAGE_DOWN,
@@ -118,6 +119,8 @@ int handle_bracket_sequences(char seq[]) {
     case '8':
       return END_KEY;
 
+    case '3':
+      return DEL_KEY;
     case '5':
       return PAGE_UP;
     case '6':
