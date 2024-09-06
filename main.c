@@ -59,6 +59,7 @@ struct editorConfig {
   int cursor_x;
   int cursor_y;
   int row_off;
+  int col_off;
 
   uint16_t screen_rows;
   uint16_t screen_cols;
@@ -331,12 +332,22 @@ void ab_free(struct abuf *ab) {
 
 // Sets and bound check the editor scroll off
 void editor_scroll(void) {
+  // Cursor Y
   if (E.cursor_y < E.row_off) {
     E.row_off = E.cursor_y;
   }
 
   if (E.cursor_y >= E.row_off + E.screen_rows) {
     E.row_off = E.cursor_y - E.screen_rows + 1;
+  }
+
+  // Cursor X
+  if (E.cursor_x < E.col_off) {
+    E.col_off = E.cursor_x;
+  }
+
+  if (E.cursor_x >= E.col_off + E.screen_cols) {
+    E.col_off = E.cursor_x - E.screen_cols + 1;
   }
 }
 
@@ -367,11 +378,15 @@ void editor_draw_rows(struct abuf *ab) {
 
     int file_row = y + E.row_off;
     if (file_row < E.num_rows) {
-      int len = E.row[file_row].size;
+      int len = E.row[file_row].size - E.col_off;
+      if (len < 0) {
+        len = 0;
+      }
+
       if (len > E.screen_cols) {
         len = E.screen_cols;
       }
-      ab_append(ab, E.row[file_row].chars, len);
+      ab_append(ab, &E.row[file_row].chars[E.col_off], len);
 
     } else if (E.num_rows == 0 && y == E.screen_rows / 3) {
       editor_draw_welcome(ab);
@@ -400,8 +415,9 @@ void editor_refresh_screen(void) {
 
   char buf[32];
   // Format cursor position escape sequence into buf
-  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cursor_y - E.row_off) + 1,
-           E.cursor_x + 1);
+  snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
+           (E.cursor_y - E.row_off) + 1, //
+           (E.cursor_x - E.col_off) + 1);
   ab_append(&ab, buf, strlen(buf));
 
   ab_append(&ab, CURSOR_SHOW, 6);
@@ -443,10 +459,6 @@ void editor_move_cursor(int key) {
 
   // Right
   case ARROW_RIGHT:
-    if (E.cursor_x == E.screen_cols - 1) {
-      return;
-    }
-
     E.cursor_x++;
     break;
   }
@@ -495,6 +507,7 @@ void init_editor(void) {
       .cursor_x = 0,
       .cursor_y = 0,
       .row_off = 0,
+      .col_off = 0,
       .num_rows = 0,
       .row = NULL,
   };
