@@ -467,9 +467,17 @@ void editor_move_cursor(int key) {
 
   // Right
   case ARROW_RIGHT:
-    if (row && E.cursor_x < row->size) {
-      E.cursor_x++;
+    if (row && E.cursor_x >= row->size) {
+      // Move cursor to the beginning of the next row if at the end of the
+      // current row
+      if (row && E.cursor_x == row->size) {
+        E.cursor_y++;
+        E.cursor_x = 0;
+      }
+      return;
     }
+
+    E.cursor_x++;
     break;
   }
 
