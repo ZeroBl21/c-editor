@@ -429,6 +429,8 @@ void editor_refresh_screen(void) {
 // input
 
 void editor_move_cursor(int key) {
+  editorRow *row = (E.cursor_y >= E.num_rows) ? NULL : &E.row[E.cursor_y];
+
   switch (key) {
   // Up
   case ARROW_UP:
@@ -451,6 +453,12 @@ void editor_move_cursor(int key) {
   // Left
   case ARROW_LEFT:
     if (E.cursor_x == 0) {
+      // Move cursor up to the end of the previous row if not at the top row
+      if (E.cursor_y > 0) {
+        E.cursor_y--;
+        E.cursor_x = E.row[E.cursor_y].size;
+      }
+
       return;
     }
 
@@ -459,8 +467,16 @@ void editor_move_cursor(int key) {
 
   // Right
   case ARROW_RIGHT:
-    E.cursor_x++;
+    if (row && E.cursor_x < row->size) {
+      E.cursor_x++;
+    }
     break;
+  }
+
+  row = (E.cursor_y >= E.num_rows) ? NULL : &E.row[E.cursor_y];
+  int row_len = row ? row->size : 0;
+  if (E.cursor_x > row_len) {
+    E.cursor_x = row_len;
   }
 }
 
