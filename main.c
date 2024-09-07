@@ -21,6 +21,7 @@
 // Constants
 
 const char *KILO_VERSION = "0.0.1";
+const size_t KILO_TAB_STOP = 4;
 
 const int ESC_KEY = '\x1b';
 
@@ -51,7 +52,9 @@ enum editorKey {
 
 typedef struct editorRow {
   int size;
+  int r_size;
   char *chars;
+  char *r_chars;
 } editorRow;
 
 struct editorConfig {
@@ -255,6 +258,37 @@ int get_window_size(uint16_t *rows, uint16_t *cols) {
 
 // row operations
 
+void editor_update_row(editorRow *row) {
+  int tabs = 0;
+
+  for (int i = 0; i < row->size; i++) {
+    if (row->chars[i] == '\t') {
+      tabs++;
+    }
+  }
+
+  free(row->r_chars);
+  row->r_chars = malloc(row->size + (tabs * KILO_TAB_STOP - 1) + 1);
+
+  size_t idx = 0;
+  for (size_t j = 0; j < row->size; j++) {
+    if (row->chars[j] == '\t') {
+      row->r_chars[idx++] = ' ';
+
+      while (idx % KILO_TAB_STOP != 0) {
+        row->r_chars[idx++] = ' ';
+      }
+
+      continue;
+    }
+
+    row->r_chars[idx++] = row->chars[j];
+  }
+
+  row->r_chars[idx] = '\0';
+  row->r_size = idx;
+}
+
 void editor_append_row(char *s, size_t len) {
   E.row = realloc(E.row, sizeof(editorRow) * (E.num_rows + 1));
 
@@ -266,6 +300,11 @@ void editor_append_row(char *s, size_t len) {
   memcpy(E.row[at].chars, s, len);
 
   E.row[at].chars[len] = '\0';
+
+  E.row[at].r_size = 0;
+  E.row[at].r_chars = NULL;
+  editor_update_row(&E.row[at]);
+
   E.num_rows++;
 }
 
@@ -378,7 +417,7 @@ void editor_draw_rows(struct abuf *ab) {
 
     int file_row = y + E.row_off;
     if (file_row < E.num_rows) {
-      int len = E.row[file_row].size - E.col_off;
+      int len = E.row[file_row].r_size - E.col_off;
       if (len < 0) {
         len = 0;
       }
@@ -386,7 +425,7 @@ void editor_draw_rows(struct abuf *ab) {
       if (len > E.screen_cols) {
         len = E.screen_cols;
       }
-      ab_append(ab, &E.row[file_row].chars[E.col_off], len);
+      ab_append(ab, &E.row[file_row].r_chars[E.col_off], len);
 
     } else if (E.num_rows == 0 && y == E.screen_rows / 3) {
       editor_draw_welcome(ab);
