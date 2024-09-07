@@ -268,7 +268,7 @@ void editor_update_row(editorRow *row) {
   }
 
   free(row->r_chars);
-  row->r_chars = malloc(row->size + (tabs * KILO_TAB_STOP - 1) + 1);
+  row->r_chars = malloc(row->size + tabs * (KILO_TAB_STOP - 1) + 1);
 
   size_t idx = 0;
   for (size_t j = 0; j < row->size; j++) {
