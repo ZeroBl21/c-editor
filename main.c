@@ -505,7 +505,7 @@ void editor_draw_message_bar(struct abuf *ab) {
 
   int msg_len = strlen(E.status_msg);
   if (msg_len > E.screen_cols) {
-    int msg_len = E.screen_cols;
+    msg_len = E.screen_cols;
   }
 
   if (msg_len && time(NULL) - E.status_msg_time < 5) {
@@ -670,7 +670,7 @@ void init_editor(void) {
       .row = NULL,
 
       .filename = NULL,
-      .status_msg = '\0',
+      .status_msg = {'\0'},
       .status_msg_time = 0,
   };
 
