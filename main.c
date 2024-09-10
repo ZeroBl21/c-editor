@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -83,6 +84,10 @@ struct editorConfig {
   time_t status_msg_time;
   struct termios orig_termios;
 } E;
+
+// Prototypes
+
+void editor_set_status_message(const char *fmt, ...);
 
 // terminal
 
@@ -359,6 +364,27 @@ void editor_insert_char(int c) {
 
 // file i/o
 
+char *editor_rows_to_string(int *buf_len) {
+  int total_len = 0;
+
+  for (int i = 0; i < E.num_rows; i++) {
+    total_len += E.row[i].size + 1;
+  }
+  *buf_len = total_len;
+
+  char *buf = malloc(total_len);
+  char *p = buf;
+  for (int i = 0; i < E.num_rows; i++) {
+    memcpy(p, E.row[i].chars, E.row[i].size);
+
+    p += E.row[i].size;
+    *p = '\n';
+    p++;
+  }
+
+  return buf;
+}
+
 void editor_open(char *filename) {
   FILE *file_pointer = fopen(filename, "r");
   if (!file_pointer) {
@@ -388,6 +414,36 @@ void editor_open(char *filename) {
 
   free(line);
   fclose(file_pointer);
+}
+
+void editor_save(void) {
+  if (E.filename == NULL) {
+    return;
+  }
+
+  int len;
+  char *buf = editor_rows_to_string(&len);
+
+  int fd = open(E.filename, O_RDWR | O_CREAT, 0644);
+  if (fd == -1)
+    goto cleanup;
+
+  if (ftruncate(fd, len) == -1)
+    goto cleanup;
+  if (write(fd, buf, len) != len)
+    goto cleanup;
+
+  close(fd);
+  free(buf);
+  editor_set_status_message("%d bytes written to disk", len);
+
+  return;
+
+cleanup:
+  if (fd != -1)
+    close(fd);
+  free(buf);
+  editor_set_status_message("Can't save! I/O error: %s", strerror(errno));
 }
 
 // append buffer
@@ -655,10 +711,16 @@ void editor_process_keypress(void) {
   case '\x1b':
     break;
 
+    // Quit
   case CTRL_KEY('q'):
     write(STDOUT_FILENO, CLEAR_SCREEN_CMD, 4);
     write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
     exit(EXIT_SUCCESS);
+    break;
+
+    // Save
+  case CTRL_KEY('s'):
+    editor_save();
     break;
 
   case PAGE_UP:
@@ -735,7 +797,7 @@ int main(int argc, char *argv[]) {
     editor_open(argv[1]);
   }
 
-  editor_set_status_message("HELP: Ctrl-Q = quit");
+  editor_set_status_message("HELP: Ctrl-S = Save | Ctrl-Q = quit");
 
   while (1) {
     editor_refresh_screen();
