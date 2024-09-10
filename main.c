@@ -77,6 +77,7 @@ struct editorConfig {
 
   int num_rows;
   editorRow *row;
+  int dirty;
 
   // Metadata
   char *filename;
@@ -336,6 +337,7 @@ void editor_append_row(char *s, size_t len) {
   editor_update_row(&E.row[at]);
 
   E.num_rows++;
+  E.dirty++;
 }
 
 void editor_row_insert_char(editorRow *row, int at, int c) {
@@ -349,6 +351,8 @@ void editor_row_insert_char(editorRow *row, int at, int c) {
 
   row->chars[at] = c;
   editor_update_row(row);
+
+  E.dirty++;
 }
 
 // editor operations
@@ -414,6 +418,8 @@ void editor_open(char *filename) {
 
   free(line);
   fclose(file_pointer);
+
+  E.dirty = 0;
 }
 
 void editor_save(void) {
@@ -436,6 +442,8 @@ void editor_save(void) {
   close(fd);
   free(buf);
   editor_set_status_message("%d bytes written to disk", len);
+
+  E.dirty = 0;
 
   return;
 
@@ -558,8 +566,9 @@ void editor_draw_status_bar(struct abuf *ab) {
   ab_append(ab, INVERSE_FORMATTING, 4);
 
   char status[80], r_status[80];
-  int len = snprintf(status, sizeof(status), "%.20s - %d lines",
-                     E.filename ? E.filename : "[No Name]", E.num_rows);
+  int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
+                     E.filename ? E.filename : "[No Name]", E.num_rows,
+                     E.dirty ? "[+]" : "");
   if (len > E.screen_cols) {
     len = E.screen_cols;
   }
@@ -773,8 +782,10 @@ void init_editor(void) {
       .render_x = 0,
       .row_off = 0,
       .col_off = 0,
+
       .num_rows = 0,
       .row = NULL,
+      .dirty = 0,
 
       .filename = NULL,
       .status_msg = {'\0'},
