@@ -39,6 +39,8 @@ const char *CURSOR_SHOW = "\x1b[?25h";
 const char *CURSOR_HIDE = "\x1b[?25l";
 
 enum editorKey {
+  BACKSPACE = 127,
+
   ARROW_UP = 1000,
   ARROW_DOWN,
   ARROW_LEFT,
@@ -638,6 +640,21 @@ void editor_process_keypress(void) {
   int c = editor_read_key();
 
   switch (c) {
+
+  case '\r':
+    // TODO
+    break;
+
+  case BACKSPACE:
+  case CTRL_KEY('h'):
+  case DEL_KEY:
+    // TODO
+    break;
+
+  case CTRL_KEY('l'):
+  case '\x1b':
+    break;
+
   case CTRL_KEY('q'):
     write(STDOUT_FILENO, CLEAR_SCREEN_CMD, 4);
     write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
