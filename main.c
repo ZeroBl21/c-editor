@@ -28,6 +28,9 @@ const int ESC_KEY = '\x1b';
 const char *CLEAR_SCREEN_CMD = "\x1b[2J";
 const char *CLEAR_LINE_RIGHT = "\x1b[K";
 
+const char *RESET_FORMATTING = "\x1b[m";
+const char *INVERSE_FORMATTING = "\x1b[7m";
+
 const char *CURSOR_HOME_CMD = "\x1b[H";
 const char *CURSOR_MOVE_TO_END = "\x1b[999C\x1b[999B";
 const char *CURSOR_REPORT_POSITION = "\x1b[6n";
@@ -71,6 +74,8 @@ struct editorConfig {
   int num_rows;
   editorRow *row;
 
+  // Metadata
+  char *filename;
   struct termios orig_termios;
 } E;
 
@@ -331,6 +336,9 @@ void editor_open(char *filename) {
     die("fopen");
   }
 
+  free(E.filename);
+  E.filename = strdup(filename);
+
   char *line = NULL;
   size_t line_cap = 0;
 
@@ -457,10 +465,35 @@ void editor_draw_rows(struct abuf *ab) {
 
     ab_append(ab, CLEAR_LINE_RIGHT, 3);
 
-    if (y < E.screen_rows - 1) {
-      ab_append(ab, "\r\n", 2);
-    }
+    ab_append(ab, "\r\n", 2);
   }
+}
+
+void editor_draw_status_bar(struct abuf *ab) {
+  ab_append(ab, INVERSE_FORMATTING, 4);
+
+  char status[80], r_status[80];
+  int len = snprintf(status, sizeof(status), "%.20s - %d lines",
+                     E.filename ? E.filename : "[No Name]", E.num_rows);
+  if (len > E.screen_cols) {
+    len = E.screen_cols;
+  }
+
+  int r_len = snprintf(r_status, sizeof(r_status), "%d/%d ", E.cursor_y + 1,
+                       E.num_rows);
+
+  ab_append(ab, status, len);
+
+  for (; len < E.screen_cols; len++) {
+    if (E.screen_cols - len == r_len) {
+      ab_append(ab, r_status, r_len);
+      break;
+    }
+
+    ab_append(ab, " ", 1);
+  }
+
+  ab_append(ab, RESET_FORMATTING, 3);
 }
 
 void editor_refresh_screen(void) {
@@ -472,6 +505,7 @@ void editor_refresh_screen(void) {
   ab_append(&ab, CURSOR_HOME_CMD, 3);
 
   editor_draw_rows(&ab);
+  editor_draw_status_bar(&ab);
 
   char buf[32];
   // Format cursor position escape sequence into buf
@@ -606,11 +640,13 @@ void init_editor(void) {
       .col_off = 0,
       .num_rows = 0,
       .row = NULL,
+      .filename = NULL,
   };
 
   if (get_window_size(&E.screen_rows, &E.screen_cols) == -1) {
     die("get_window_size");
   }
+  E.screen_rows -= 1;
 }
 
 int main(int argc, char *argv[]) {
