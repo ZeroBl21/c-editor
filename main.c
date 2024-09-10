@@ -61,6 +61,7 @@ struct editorConfig {
   // Position
   int cursor_x;
   int cursor_y;
+  int render_x;
   int row_off;
   int col_off;
 
@@ -258,6 +259,20 @@ int get_window_size(uint16_t *rows, uint16_t *cols) {
 
 // row operations
 
+int editor_row_cursor_x_to_render_x(editorRow *row, int cx) {
+  int rx = 0;
+
+  for (int i = 0; i < cx; i++) {
+    if (row->chars[i] == '\t') {
+      rx += (KILO_TAB_STOP - 1) - (rx % KILO_TAB_STOP);
+    }
+
+    rx++;
+  }
+
+  return rx;
+}
+
 void editor_update_row(editorRow *row) {
   int tabs = 0;
 
@@ -371,6 +386,12 @@ void ab_free(struct abuf *ab) {
 
 // Sets and bound check the editor scroll off
 void editor_scroll(void) {
+  E.render_x = 0;
+  if (E.cursor_y < E.num_rows) {
+    E.render_x =
+        editor_row_cursor_x_to_render_x(&E.row[E.cursor_y], E.cursor_x);
+  }
+
   // Cursor Y
   if (E.cursor_y < E.row_off) {
     E.row_off = E.cursor_y;
@@ -381,12 +402,12 @@ void editor_scroll(void) {
   }
 
   // Cursor X
-  if (E.cursor_x < E.col_off) {
-    E.col_off = E.cursor_x;
+  if (E.render_x < E.col_off) {
+    E.col_off = E.render_x;
   }
 
-  if (E.cursor_x >= E.col_off + E.screen_cols) {
-    E.col_off = E.cursor_x - E.screen_cols + 1;
+  if (E.render_x >= E.col_off + E.screen_cols) {
+    E.col_off = E.render_x - E.screen_cols + 1;
   }
 }
 
@@ -456,7 +477,7 @@ void editor_refresh_screen(void) {
   // Format cursor position escape sequence into buf
   snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
            (E.cursor_y - E.row_off) + 1, //
-           (E.cursor_x - E.col_off) + 1);
+           (E.render_x - E.col_off) + 1);
   ab_append(&ab, buf, strlen(buf));
 
   ab_append(&ab, CURSOR_SHOW, 6);
@@ -569,6 +590,7 @@ void init_editor(void) {
   E = (struct editorConfig){
       .cursor_x = 0,
       .cursor_y = 0,
+      .render_x = 0,
       .row_off = 0,
       .col_off = 0,
       .num_rows = 0,
