@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <locale.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,6 +77,8 @@ struct editorConfig {
 
   // Metadata
   char *filename;
+  char status_msg[80];
+  time_t status_msg_time;
   struct termios orig_termios;
 } E;
 
@@ -494,6 +497,20 @@ void editor_draw_status_bar(struct abuf *ab) {
   }
 
   ab_append(ab, RESET_FORMATTING, 3);
+  ab_append(ab, "\r\n", 2);
+}
+
+void editor_draw_message_bar(struct abuf *ab) {
+  ab_append(ab, CLEAR_LINE_RIGHT, 3);
+
+  int msg_len = strlen(E.status_msg);
+  if (msg_len > E.screen_cols) {
+    int msg_len = E.screen_cols;
+  }
+
+  if (msg_len && time(NULL) - E.status_msg_time < 5) {
+    ab_append(ab, E.status_msg, msg_len);
+  }
 }
 
 void editor_refresh_screen(void) {
@@ -506,6 +523,7 @@ void editor_refresh_screen(void) {
 
   editor_draw_rows(&ab);
   editor_draw_status_bar(&ab);
+  editor_draw_message_bar(&ab);
 
   char buf[32];
   // Format cursor position escape sequence into buf
@@ -518,6 +536,16 @@ void editor_refresh_screen(void) {
 
   write(STDOUT_FILENO, ab.buffer, ab.len);
   ab_free(&ab);
+}
+
+void editor_set_status_message(const char *fmt, ...) {
+  va_list ap;
+
+  va_start(ap, fmt);
+  vsnprintf(E.status_msg, sizeof(E.status_msg), fmt, ap);
+  va_end(ap);
+
+  E.status_msg_time = time(NULL);
 }
 
 // input
@@ -640,13 +668,16 @@ void init_editor(void) {
       .col_off = 0,
       .num_rows = 0,
       .row = NULL,
+
       .filename = NULL,
+      .status_msg = '\0',
+      .status_msg_time = 0,
   };
 
   if (get_window_size(&E.screen_rows, &E.screen_cols) == -1) {
     die("get_window_size");
   }
-  E.screen_rows -= 1;
+  E.screen_rows -= 2;
 }
 
 int main(int argc, char *argv[]) {
@@ -658,6 +689,8 @@ int main(int argc, char *argv[]) {
   if (argc >= 2) {
     editor_open(argv[1]);
   }
+
+  editor_set_status_message("HELP: Ctrl-Q = quit");
 
   while (1) {
     editor_refresh_screen();
