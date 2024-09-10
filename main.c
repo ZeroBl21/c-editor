@@ -581,7 +581,9 @@ void editor_process_keypress(void) {
     break;
 
   case END_KEY:
-    E.cursor_x = E.screen_cols - 1;
+    if (E.cursor_y < E.num_rows) {
+      E.cursor_x = E.row[E.cursor_y].size;
+    }
     break;
 
   case ARROW_UP:
