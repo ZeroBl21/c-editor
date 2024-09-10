@@ -24,6 +24,7 @@
 
 const char *KILO_VERSION = "0.0.1";
 const size_t KILO_TAB_STOP = 4;
+const size_t KILO_QUIT_TIMES = 3;
 
 const int ESC_KEY = '\x1b';
 
@@ -702,6 +703,8 @@ void editor_move_cursor(int key) {
 }
 
 void editor_process_keypress(void) {
+  static int quit_times = KILO_QUIT_TIMES;
+
   int c = editor_read_key();
 
   switch (c) {
@@ -722,6 +725,14 @@ void editor_process_keypress(void) {
 
     // Quit
   case CTRL_KEY('q'):
+    if (E.dirty && quit_times > 0) {
+      editor_set_status_message("WARNING! File has unsaved changse. "
+                                "Press Ctrl-Q %d more times to quit",
+                                quit_times);
+      quit_times--;
+      return;
+    }
+
     write(STDOUT_FILENO, CLEAR_SCREEN_CMD, 4);
     write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
     exit(EXIT_SUCCESS);
@@ -771,6 +782,8 @@ void editor_process_keypress(void) {
     editor_insert_char(c);
     break;
   }
+
+  quit_times = KILO_QUIT_TIMES;
 }
 
 // init
