@@ -2,6 +2,7 @@
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
@@ -90,6 +91,8 @@ struct editorConfig {
 // Prototypes
 
 void editor_set_status_message(const char *fmt, ...);
+void editor_refresh_screen(void);
+char *editor_prompt(char *prompt);
 
 // terminal
 
@@ -514,7 +517,11 @@ void editor_open(char *filename) {
 
 void editor_save(void) {
   if (E.filename == NULL) {
-    return;
+    E.filename = editor_prompt("Save as: %s");
+    if (E.filename == NULL) {
+      editor_set_status_message("Save Aborted");
+      return;
+    }
   }
 
   int len;
@@ -730,6 +737,49 @@ void editor_set_status_message(const char *fmt, ...) {
 }
 
 // input
+
+char *editor_prompt(char *prompt) {
+  size_t buf_size = 128;
+  char *buf = malloc(buf_size);
+
+  size_t buf_len = 0;
+  buf[0] = '\0';
+
+  while (1) {
+    editor_set_status_message(prompt, buf);
+    editor_refresh_screen();
+
+    int c = editor_read_key();
+    if (c == DEL_KEY || c == CTRL_KEY('h') || c == BACKSPACE) {
+      if (buf_len != 0) {
+        buf[--buf_len] = '\0';
+      }
+      continue;
+    }
+
+    if (c == ESC_KEY) {
+      editor_set_status_message("");
+      free(buf);
+
+      return NULL;
+    }
+
+    if (c == '\r' && buf_len != 0) {
+      editor_set_status_message("");
+      return buf;
+    }
+
+    if (!iscntrl(c) && c < 128) {
+      if (buf_len == buf_size - 1) {
+        buf_size *= 2;
+        buf = realloc(buf, buf_size);
+      }
+
+      buf[buf_len++] = c;
+      buf[buf_len] = '\0';
+    }
+  }
+}
 
 void editor_move_cursor(int key) {
   editorRow *row = (E.cursor_y >= E.num_rows) ? NULL : &E.row[E.cursor_y];
