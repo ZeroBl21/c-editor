@@ -7,86 +7,15 @@
 #include <fcntl.h>
 #include <locale.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <time.h>
-
 #include <unistd.h>
 
-// defines
+#include "src/editor.h"
+#include "src/terminal.h"
 
-#define CTRL_KEY(k) ((k) & 0x1f)
-
-// Constants
-
-const char *KILO_VERSION = "0.0.1";
-const size_t KILO_TAB_STOP = 4;
-const size_t KILO_QUIT_TIMES = 3;
-
-const int ESC_KEY = '\x1b';
-
-const char *CLEAR_SCREEN_CMD = "\x1b[2J";
-const char *CLEAR_LINE_RIGHT = "\x1b[K";
-
-const char *RESET_FORMATTING = "\x1b[m";
-const char *INVERSE_FORMATTING = "\x1b[7m";
-
-const char *CURSOR_HOME_CMD = "\x1b[H";
-const char *CURSOR_MOVE_TO_END = "\x1b[999C\x1b[999B";
-const char *CURSOR_REPORT_POSITION = "\x1b[6n";
-const char *CURSOR_SHOW = "\x1b[?25h";
-const char *CURSOR_HIDE = "\x1b[?25l";
-
-enum editorKey {
-  BACKSPACE = 127,
-
-  ARROW_UP = 1000,
-  ARROW_DOWN,
-  ARROW_LEFT,
-  ARROW_RIGHT,
-
-  HOME_KEY,
-  END_KEY,
-  DEL_KEY,
-
-  PAGE_UP,
-  PAGE_DOWN,
-};
-
-// types
-
-typedef struct editorRow {
-  int size;
-  int r_size;
-  char *chars;
-  char *r_chars;
-} editorRow;
-
-struct editorConfig {
-  // Position
-  int cursor_x;
-  int cursor_y;
-  int render_x;
-  int row_off;
-  int col_off;
-
-  uint16_t screen_rows;
-  uint16_t screen_cols;
-
-  int num_rows;
-  editorRow *row;
-  int dirty;
-
-  // Metadata
-  char *filename;
-  char status_msg[80];
-  time_t status_msg_time;
-  struct termios orig_termios;
-} E;
+struct EditorConfig E;
 
 // Prototypes
 
@@ -94,192 +23,9 @@ void editor_set_status_message(const char *fmt, ...);
 void editor_refresh_screen(void);
 char *editor_prompt(char *prompt);
 
-// terminal
-
-void die(const char *s) {
-  write(STDOUT_FILENO, CLEAR_SCREEN_CMD, 4);
-  write(STDOUT_FILENO, CURSOR_HOME_CMD, 3);
-
-  perror(s);
-  exit(EXIT_FAILURE);
-}
-
-void disable_raw_mode(void) {
-  // Discards any unread input before applying the changes to the terminal.
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1) {
-    die("tcsetattr");
-  }
-}
-
-void enable_raw_mode(void) {
-  if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) {
-    die("tcsetattr");
-  }
-
-  atexit(disable_raw_mode);
-
-  struct termios raw = E.orig_termios;
-
-  raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-  raw.c_oflag &= ~(OPOST);
-  raw.c_oflag |= (CS8);
-  // Disable terminal echoing, read input byte-by-byte and ignore signals.
-  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-
-  raw.c_cc[VMIN] = 0;
-  raw.c_cc[VTIME] = 10;
-
-  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
-    die("tcsetattr");
-  }
-}
-
-int read_escape_sequence(char *seq, int length) {
-  for (int i = 0; i < length; i++) {
-    if (read(STDIN_FILENO, &seq[i], 1) != 1) {
-      return 0; // Si la lectura falla, retorna falso
-    }
-  }
-  return 1;
-}
-
-int handle_bracket_sequences(char seq[]) {
-  // numeric
-  if (seq[1] >= '0' && seq[1] <= '9') {
-    if (!read_escape_sequence(&seq[2], 1) || seq[2] != '~') {
-      return ESC_KEY;
-    }
-
-    switch (seq[1]) {
-    case '1':
-    case '7':
-      return HOME_KEY;
-
-    case '4':
-    case '8':
-      return END_KEY;
-
-    case '3':
-      return DEL_KEY;
-    case '5':
-      return PAGE_UP;
-    case '6':
-      return PAGE_DOWN;
-    default:
-      return ESC_KEY;
-    }
-  }
-
-  // non-numeric
-  switch (seq[1]) {
-  case 'A':
-    return ARROW_UP;
-  case 'B':
-    return ARROW_DOWN;
-  case 'C':
-    return ARROW_RIGHT;
-  case 'D':
-    return ARROW_LEFT;
-
-  case 'H':
-    return HOME_KEY;
-  case 'F':
-    return END_KEY;
-  default:
-    return ESC_KEY;
-  }
-}
-
-int handle_o_sequences(char seq[]) {
-  switch (seq[1]) {
-  case 'H':
-    return HOME_KEY;
-  case 'F':
-    return END_KEY;
-  default:
-    return ESC_KEY;
-  }
-}
-
-int editor_read_key(void) {
-  int nread;
-  char c;
-  while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
-    if (nread == -1 && errno != EAGAIN) {
-      die("read");
-    }
-  }
-
-  if (c == ESC_KEY) {
-    char seq[3];
-
-    if (!read_escape_sequence(seq, 2)) {
-      return ESC_KEY;
-    }
-
-    if (seq[0] == '[') {
-      return handle_bracket_sequences(seq);
-    }
-    if (seq[0] == 'O') {
-      return handle_o_sequences(seq);
-    }
-  }
-
-  return c;
-}
-
-int get_cursor_position(uint16_t *rows, uint16_t *cols) {
-  char buf[32];
-  uint32_t i = 0;
-
-  if (write(STDOUT_FILENO, CURSOR_REPORT_POSITION, 4) != 4) {
-    return -1;
-  }
-
-  while (i < sizeof(buf) - 1) {
-    if (read(STDIN_FILENO, &buf[i], 1) != 1) {
-      break;
-    }
-    if (buf[i] == 'R') {
-      break;
-    }
-
-    i++;
-  }
-  buf[i] = L'\0';
-
-  if (buf[0] != ESC_KEY || buf[1] != '[') {
-    return -1;
-  }
-  if (sscanf(&buf[2], "%d;%d", (int *)rows, (int *)cols) != 2) {
-    return -1;
-  }
-
-  return 0;
-}
-
-int get_window_size(uint16_t *rows, uint16_t *cols) {
-  struct winsize ws;
-
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-    // Fallback to get window size moving the cursor to the end of the window.
-
-    if (write(STDOUT_FILENO, CURSOR_MOVE_TO_END, 12) != 12) {
-      return -1;
-    }
-
-    return get_cursor_position(rows, cols);
-  }
-
-  *cols = ws.ws_col;
-  *rows = ws.ws_row;
-
-  return 0;
-}
-
 // row operations
 
-int editor_row_cursor_x_to_render_x(editorRow *row, int cx) {
+int editor_row_cursor_x_to_render_x(EditorRow *row, int cx) {
   int rx = 0;
 
   for (int i = 0; i < cx; i++) {
@@ -293,7 +39,7 @@ int editor_row_cursor_x_to_render_x(editorRow *row, int cx) {
   return rx;
 }
 
-void editor_update_row(editorRow *row) {
+void editor_update_row(EditorRow *row) {
   int tabs = 0;
 
   for (int i = 0; i < row->size; i++) {
@@ -329,8 +75,8 @@ void editor_insert_row(int at, char *s, size_t len) {
     return;
   }
 
-  E.row = realloc(E.row, sizeof(editorRow) * (E.num_rows + 1));
-  memmove(&E.row[at + 1], &E.row[at], sizeof(editorRow) * (E.num_rows - at));
+  E.row = realloc(E.row, sizeof(EditorRow) * (E.num_rows + 1));
+  memmove(&E.row[at + 1], &E.row[at], sizeof(EditorRow) * (E.num_rows - at));
 
   E.row[at].size = len;
   E.row[at].chars = malloc(len + 1);
@@ -347,7 +93,7 @@ void editor_insert_row(int at, char *s, size_t len) {
   E.dirty++;
 }
 
-void editor_free_row(editorRow *row) {
+void editor_free_row(EditorRow *row) {
   free(row->r_chars);
   free(row->chars);
 }
@@ -359,13 +105,13 @@ void editor_del_row(int at) {
 
   editor_free_row(&E.row[at]);
   memmove(&E.row[at], &E.row[at + 1],
-          sizeof(editorRow) * (E.num_rows - at - 1));
+          sizeof(EditorRow) * (E.num_rows - at - 1));
 
   E.num_rows--;
   E.dirty++;
 }
 
-void editor_row_insert_char(editorRow *row, int at, int c) {
+void editor_row_insert_char(EditorRow *row, int at, int c) {
   if (at < 0 || at > row->size) {
     at = row->size;
   }
@@ -380,7 +126,7 @@ void editor_row_insert_char(editorRow *row, int at, int c) {
   E.dirty++;
 }
 
-void editor_row_append_string(editorRow *row, char *s, size_t len) {
+void editor_row_append_string(EditorRow *row, char *s, size_t len) {
   row->chars = realloc(row->chars, row->size + len + 1);
   memcpy(&row->chars[row->size], s, len);
 
@@ -391,7 +137,7 @@ void editor_row_append_string(editorRow *row, char *s, size_t len) {
   E.dirty++;
 }
 
-void editor_row_del_char(editorRow *row, int at) {
+void editor_row_del_char(EditorRow *row, int at) {
   if (at < 0 || at >= row->size) {
     return;
   }
@@ -423,7 +169,7 @@ void editor_insert_new_line(void) {
     return;
   }
 
-  editorRow *row = &E.row[E.cursor_y];
+  EditorRow *row = &E.row[E.cursor_y];
   editor_insert_row(E.cursor_y + 1, &row->chars[E.cursor_x],
                     row->size - E.cursor_x);
 
@@ -444,7 +190,7 @@ void editor_del_char(void) {
     return;
   }
 
-  editorRow *row = &E.row[E.cursor_y];
+  EditorRow *row = &E.row[E.cursor_y];
   if (E.cursor_x > 0) {
     editor_row_del_char(row, E.cursor_x - 1);
     E.cursor_x--;
@@ -782,7 +528,7 @@ char *editor_prompt(char *prompt) {
 }
 
 void editor_move_cursor(int key) {
-  editorRow *row = (E.cursor_y >= E.num_rows) ? NULL : &E.row[E.cursor_y];
+  EditorRow *row = (E.cursor_y >= E.num_rows) ? NULL : &E.row[E.cursor_y];
 
   switch (key) {
   // Up
@@ -932,7 +678,7 @@ void editor_process_keypress(void) {
 // init
 
 void init_editor(void) {
-  E = (struct editorConfig){
+  E = (struct EditorConfig){
       .cursor_x = 0,
       .cursor_y = 0,
       .render_x = 0,
