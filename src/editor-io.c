@@ -229,7 +229,7 @@ void editor_move_cursor(int key) {
 
   // Down
   case ARROW_DOWN:
-    if (E.cursor_y > E.num_rows) {
+    if (E.cursor_y >= E.num_rows) {
       return;
     }
 
