@@ -9,3 +9,6 @@ build: main.c
 
 run: build
 	./bin/kilo $(FILE)
+
+clean:
+	rm -f $(OUT)
