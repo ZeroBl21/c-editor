@@ -1,10 +1,5 @@
-#include <fcntl.h>
 #include <locale.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "src/editor-io.h"
 #include "src/editor.h"
@@ -12,12 +7,6 @@
 #include "src/terminal.h"
 
 struct EditorConfig E;
-
-// Prototypes
-
-void editor_set_status_message(const char *fmt, ...);
-void editor_refresh_screen(void);
-char *editor_prompt(char *prompt);
 
 // init
 
