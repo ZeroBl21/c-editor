@@ -11,7 +11,7 @@
 struct EditorConfig E;
 
 void editor_find(void) {
-  char *query = editor_prompt("Search: %s (ESC to cancel)");
+  char *query = editor_prompt("Search: %s (ESC to cancel)", NULL);
   if (query == NULL) {
     return;
   }

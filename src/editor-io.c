@@ -172,7 +172,7 @@ void editor_set_status_message(const char *fmt, ...) {
 
 // input
 
-char *editor_prompt(char *prompt) {
+char *editor_prompt(char *prompt, void (*callback)(char *, int)) {
   size_t buf_size = 128;
   char *buf = malloc(buf_size);
 
@@ -193,6 +193,10 @@ char *editor_prompt(char *prompt) {
 
     if (c == ESC_KEY) {
       editor_set_status_message("");
+      if (callback) {
+        callback(buf, c);
+      }
+
       free(buf);
 
       return NULL;
@@ -200,6 +204,10 @@ char *editor_prompt(char *prompt) {
 
     if (c == '\r' && buf_len != 0) {
       editor_set_status_message("");
+      if (callback) {
+        callback(buf, c);
+      }
+
       return buf;
     }
 
@@ -211,6 +219,10 @@ char *editor_prompt(char *prompt) {
 
       buf[buf_len++] = c;
       buf[buf_len] = '\0';
+    }
+
+    if (callback) {
+      callback(buf, c);
     }
   }
 }

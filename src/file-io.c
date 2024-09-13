@@ -73,7 +73,7 @@ void editor_open(char *filename) {
 
 void editor_save(void) {
   if (E.filename == NULL) {
-    E.filename = editor_prompt("Save as: %s");
+    E.filename = editor_prompt("Save as: %s", NULL);
     if (E.filename == NULL) {
       editor_set_status_message("Save Aborted");
       return;

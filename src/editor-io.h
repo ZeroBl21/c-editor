@@ -17,7 +17,7 @@ void editor_set_status_message(const char *fmt, ...);
 
 void editor_set_status_message(const char *fmt, ...);
 void editor_refresh_screen(void);
-char *editor_prompt(char *prompt);
+char *editor_prompt(char *prompt, void (*callback)(char *, int));
 void editor_process_keypress(void);
 
 #endif // EDITOR_IO_H
