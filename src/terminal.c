@@ -37,7 +37,7 @@ void enable_raw_mode(void) {
   raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
   raw.c_cc[VMIN] = 0;
-  raw.c_cc[VTIME] = 10;
+  raw.c_cc[VTIME] = 1;
 
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
     die("tcsetattr");
