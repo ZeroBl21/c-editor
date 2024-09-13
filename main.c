@@ -30,9 +30,19 @@ void editor_find_callback(char *query, int key) {
 }
 
 void editor_find(void) {
+  int saved_cx = E.cursor_x;
+  int saved_cy = E.cursor_y;
+  int saved_col_off = E.col_off;
+  int saved_row_off = E.row_off;
+
   char *query =
       editor_prompt("Search: %s (ESC to cancel)", editor_find_callback);
   if (query == NULL) {
+    E.cursor_x = saved_cx;
+    E.cursor_y = saved_cy;
+    E.col_off = saved_col_off;
+    E.row_off = saved_row_off;
+
     return;
   }
 
