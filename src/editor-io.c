@@ -10,6 +10,7 @@
 #include "editor-operations.h"
 #include "editor.h"
 #include "file-io.h"
+#include "find.h"
 #include "row-operations.h"
 #include "terminal.h"
 
@@ -317,6 +318,11 @@ void editor_process_keypress(void) {
     // Save
   case CTRL_KEY('s'):
     editor_save();
+    break;
+
+    // Find
+  case CTRL_KEY('f'):
+    editor_find();
     break;
 
   case PAGE_UP:

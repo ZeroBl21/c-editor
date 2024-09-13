@@ -4,6 +4,7 @@
 #include "editor.h"
 
 int editor_row_cursor_x_to_render_x(EditorRow *row, int cx);
+int editor_row_render_x_to_cursor_x(EditorRow *row, int rx);
 void editor_update_row(EditorRow *row);
 void editor_insert_row(int at, char *s, size_t len);
 void editor_free_row(EditorRow *row);

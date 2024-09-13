@@ -1,12 +1,35 @@
 #include <locale.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "src/editor-io.h"
 #include "src/editor.h"
 #include "src/file-io.h"
+#include "src/row-operations.h"
 #include "src/terminal.h"
 
 struct EditorConfig E;
+
+void editor_find(void) {
+  char *query = editor_prompt("Search: %s (ESC to cancel)");
+  if (query == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < E.num_rows; i++) {
+    EditorRow *row = &E.row[i];
+
+    char *match = strstr(row->r_chars, query);
+    if (match) {
+      E.cursor_y = i;
+      E.cursor_x = editor_row_render_x_to_cursor_x(row, match - row->r_chars);
+      E.row_off = E.num_rows;
+      break;
+    }
+  }
+
+  free(query);
+}
 
 // init
 
@@ -43,7 +66,8 @@ int main(int argc, char *argv[]) {
     editor_open(argv[1]);
   }
 
-  editor_set_status_message("HELP: Ctrl-S = Save | Ctrl-Q = quit");
+  editor_set_status_message(
+      "HELP: Ctrl-S = Save | Ctrl-Q = Quit | Ctrl+F = Find");
 
   while (1) {
     editor_refresh_screen();
