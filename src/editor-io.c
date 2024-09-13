@@ -312,7 +312,7 @@ void editor_process_keypress(void) {
   case '\x1b':
     break;
 
-    // Quit
+  // Quit
   case CTRL_KEY('q'):
     if (E.dirty && quit_times > 0) {
       editor_set_status_message("WARNING! File has unsaved changse. "
@@ -327,12 +327,12 @@ void editor_process_keypress(void) {
     exit(EXIT_SUCCESS);
     break;
 
-    // Save
+  // Save
   case CTRL_KEY('s'):
     editor_save();
     break;
 
-    // Find
+  // Find
   case CTRL_KEY('f'):
     editor_find();
     break;
