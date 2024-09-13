@@ -10,9 +10,9 @@
 
 struct EditorConfig E;
 
-void editor_find(void) {
-  char *query = editor_prompt("Search: %s (ESC to cancel)", NULL);
-  if (query == NULL) {
+// Find
+void editor_find_callback(char *query, int key) {
+  if (key == '\r' || key == ESC_KEY) {
     return;
   }
 
@@ -26,6 +26,14 @@ void editor_find(void) {
       E.row_off = E.num_rows;
       break;
     }
+  }
+}
+
+void editor_find(void) {
+  char *query =
+      editor_prompt("Search: %s (ESC to cancel)", editor_find_callback);
+  if (query == NULL) {
+    return;
   }
 
   free(query);
