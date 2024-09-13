@@ -12,16 +12,51 @@ struct EditorConfig E;
 
 // Find
 void editor_find_callback(char *query, int key) {
+  static int last_match = -1;
+  static int direction = 1;
+
   if (key == '\r' || key == ESC_KEY) {
+    last_match = -1;
+    direction = 1;
+
     return;
   }
 
+  switch (key) {
+  case ARROW_RIGHT:
+  case ARROW_DOWN:
+    direction = 1;
+    break;
+
+  case ARROW_LEFT:
+  case ARROW_UP:
+    direction = -1;
+    break;
+
+  default:
+    last_match = -1;
+    direction = 1;
+  }
+
+  if (last_match == -1) {
+    direction = 1;
+  }
+  int current = last_match;
+
   for (int i = 0; i < E.num_rows; i++) {
-    EditorRow *row = &E.row[i];
+    current += direction;
+    if (current == -1) {
+      current = E.num_rows - 1;
+    } else if (current == E.num_rows) {
+      current = 0;
+    }
+
+    EditorRow *row = &E.row[current];
 
     char *match = strstr(row->r_chars, query);
     if (match) {
-      E.cursor_y = i;
+      last_match = current;
+      E.cursor_y = current;
       E.cursor_x = editor_row_render_x_to_cursor_x(row, match - row->r_chars);
       E.row_off = E.num_rows;
       break;
@@ -35,8 +70,8 @@ void editor_find(void) {
   int saved_col_off = E.col_off;
   int saved_row_off = E.row_off;
 
-  char *query =
-      editor_prompt("Search: %s (ESC to cancel)", editor_find_callback);
+  char *query = editor_prompt("Search: %s (ESC/Arrows/Enter to cancel)",
+                              editor_find_callback);
   if (query == NULL) {
     E.cursor_x = saved_cx;
     E.cursor_y = saved_cy;
