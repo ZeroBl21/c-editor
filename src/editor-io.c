@@ -101,10 +101,9 @@ void editor_draw_rows(struct abuf *ab) {
           }
           ab_append(ab, &c[j], 1);
         }
-
-        ab_append(ab, TEXT_RESET, 5);
       }
 
+      ab_append(ab, TEXT_RESET, 5);
     } else if (E.num_rows == 0 && y == E.screen_rows / 3) {
       editor_draw_welcome(ab);
 
