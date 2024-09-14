@@ -16,6 +16,9 @@
 
 extern struct EditorConfig E;
 
+const char *TEXT_RED = "\x1b[31m";
+const char *TEXT_RESET = "\x1b[39m";
+
 // Sets and bound check the editor scroll off
 void editor_scroll(void) {
   E.render_x = 0;
@@ -78,7 +81,18 @@ void editor_draw_rows(struct abuf *ab) {
       if (len > E.screen_cols) {
         len = E.screen_cols;
       }
-      ab_append(ab, &E.row[file_row].r_chars[E.col_off], len);
+
+      char *c = &E.row[file_row].r_chars[E.col_off];
+
+      for (int j = 0; j < len; j++) {
+        if isdigit (c[j]) {
+          ab_append(ab, TEXT_RED, 5);
+          ab_append(ab, &c[j], 1);
+          ab_append(ab, TEXT_RESET, 5);
+        } else {
+          ab_append(ab, &c[j], 1);
+        }
+      }
 
     } else if (E.num_rows == 0 && y == E.screen_rows / 3) {
       editor_draw_welcome(ab);
