@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <time.h>
 
@@ -46,6 +47,8 @@ enum editorKey {
   PAGE_DOWN,
 };
 
+enum editorHighlight { HL_NORMAL = 0, HL_NUMBER };
+
 // Types
 
 typedef struct {
@@ -53,6 +56,8 @@ typedef struct {
   int r_size;
   char *chars;
   char *r_chars;
+
+  uint8_t *hl;
 } EditorRow;
 
 struct EditorConfig {

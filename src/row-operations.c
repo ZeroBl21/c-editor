@@ -1,7 +1,9 @@
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "editor.h"
+#include "row-operations.h"
 
 extern struct EditorConfig E;
 
@@ -66,6 +68,8 @@ void editor_update_row(EditorRow *row) {
 
   row->r_chars[idx] = '\0';
   row->r_size = idx;
+
+  editor_update_syntax(row);
 }
 
 void editor_insert_row(int at, char *s, size_t len) {
@@ -85,6 +89,7 @@ void editor_insert_row(int at, char *s, size_t len) {
 
   E.row[at].r_size = 0;
   E.row[at].r_chars = NULL;
+  E.row[at].hl = NULL;
   editor_update_row(&E.row[at]);
 
   E.num_rows++;
@@ -94,6 +99,7 @@ void editor_insert_row(int at, char *s, size_t len) {
 void editor_free_row(EditorRow *row) {
   free(row->r_chars);
   free(row->chars);
+  free(row->hl);
 }
 
 void editor_del_row(int at) {
@@ -145,4 +151,30 @@ void editor_row_del_char(EditorRow *row, int at) {
   editor_update_row(row);
 
   E.dirty++;
+}
+
+// Syntax Hightlight
+
+void editor_update_syntax(EditorRow *row) {
+  row->hl = realloc(row->hl, row->r_size);
+  memset(row->hl, HL_NORMAL, row->r_size);
+
+  for (int i = 0; i < row->r_size; i++) {
+    if (isdigit(row->r_chars[i])) {
+      row->hl[i] = HL_NUMBER;
+    }
+  }
+}
+
+const char *TEXT_RESET = "\x1b[39m";
+const char *TEXT_RED = "\x1b[31m";
+const char *TEXT_WHITE = "\x1b[37m";
+
+const char *editor_syntax_to_color(int hl) {
+  switch (hl) {
+  case HL_NUMBER:
+    return TEXT_RED;
+  default:
+    return TEXT_WHITE;
+  }
 }

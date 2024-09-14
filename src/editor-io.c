@@ -1,8 +1,10 @@
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "append_buffer.h"
@@ -15,9 +17,6 @@
 #include "terminal.h"
 
 extern struct EditorConfig E;
-
-const char *TEXT_RED = "\x1b[31m";
-const char *TEXT_RESET = "\x1b[39m";
 
 // Sets and bound check the editor scroll off
 void editor_scroll(void) {
@@ -83,15 +82,27 @@ void editor_draw_rows(struct abuf *ab) {
       }
 
       char *c = &E.row[file_row].r_chars[E.col_off];
+      uint8_t *hl = &E.row[file_row].hl[E.col_off];
+
+      char *current_color = NULL;
 
       for (int j = 0; j < len; j++) {
-        if isdigit (c[j]) {
-          ab_append(ab, TEXT_RED, 5);
+        if (hl[j] == HL_NORMAL) {
+          if (current_color != NULL) {
+            ab_append(ab, TEXT_RESET, 5);
+            current_color = NULL;
+          }
           ab_append(ab, &c[j], 1);
-          ab_append(ab, TEXT_RESET, 5);
         } else {
+          char *color = (char *)editor_syntax_to_color(hl[j]);
+          if (color != current_color) {
+            current_color = color;
+            ab_append(ab, color, strlen(color));
+          }
           ab_append(ab, &c[j], 1);
         }
+
+        ab_append(ab, TEXT_RESET, 5);
       }
 
     } else if (E.num_rows == 0 && y == E.screen_rows / 3) {

@@ -13,4 +13,13 @@ void editor_row_insert_char(EditorRow *row, int at, int c);
 void editor_row_append_string(EditorRow *row, char *s, size_t len);
 void editor_row_del_char(EditorRow *row, int at);
 
+// Syntax Hightlight
+
+extern const char *TEXT_RESET;
+extern const char *TEXT_RED;
+extern const char *TEXT_WHITE;
+
+void editor_update_syntax(EditorRow *row);
+const char *editor_syntax_to_color(int hl);
+
 #endif // ROW_OPERATIONS_H
