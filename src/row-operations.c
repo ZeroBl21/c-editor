@@ -167,13 +167,17 @@ void editor_update_syntax(EditorRow *row) {
 }
 
 const char *TEXT_RESET = "\x1b[39m";
+
 const char *TEXT_RED = "\x1b[31m";
+const char *TEXT_BLUE = "\x1b[34m";
 const char *TEXT_WHITE = "\x1b[37m";
 
 const char *editor_syntax_to_color(int hl) {
   switch (hl) {
   case HL_NUMBER:
     return TEXT_RED;
+  case HL_MATCH:
+    return TEXT_BLUE;
   default:
     return TEXT_WHITE;
   }

@@ -59,6 +59,9 @@ void editor_find_callback(char *query, int key) {
       E.cursor_y = current;
       E.cursor_x = editor_row_render_x_to_cursor_x(row, match - row->r_chars);
       E.row_off = E.num_rows;
+
+      // Highlight
+      memset(&row->hl[match - row->r_chars], HL_MATCH, strlen(query));
       break;
     }
   }
