@@ -112,7 +112,6 @@ void editor_draw_rows(struct abuf *ab) {
     }
 
     ab_append(ab, CLEAR_LINE_RIGHT, 3);
-
     ab_append(ab, "\r\n", 2);
   }
 }

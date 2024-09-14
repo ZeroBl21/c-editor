@@ -15,6 +15,15 @@ void editor_find_callback(char *query, int key) {
   static int last_match = -1;
   static int direction = 1;
 
+  static int saved_hl_line;
+
+  static char *saved_hl = NULL;
+  if (saved_hl) {
+    memcpy(E.row[saved_hl_line].hl, saved_hl, E.row[saved_hl_line].r_size);
+
+    saved_hl = NULL;
+  }
+
   if (key == '\r' || key == ESC_KEY) {
     last_match = -1;
     direction = 1;
@@ -61,6 +70,9 @@ void editor_find_callback(char *query, int key) {
       E.row_off = E.num_rows;
 
       // Highlight
+      saved_hl_line = current;
+      saved_hl = malloc(row->r_size);
+      memcpy(saved_hl, row->hl, row->r_size);
       memset(&row->hl[match - row->r_chars], HL_MATCH, strlen(query));
       break;
     }
