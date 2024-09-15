@@ -16,6 +16,7 @@ void editor_row_del_char(EditorRow *row, int at);
 // Syntax Hightlight
 
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
+#define HL_HIGHLIGHT_STRINGS (1 << 1)
 
 struct EditorSyntax {
   char *filetype;

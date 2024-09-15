@@ -158,7 +158,13 @@ void editor_row_del_char(EditorRow *row, int at) {
 
 char *C_HL_extensions[] = {".c", ".h", ".cpp", NULL};
 
-struct EditorSyntax HLDB[] = {{"c", C_HL_extensions, HL_HIGHLIGHT_NUMBERS}};
+struct EditorSyntax HLDB[] = {
+    {
+        "c",
+        C_HL_extensions,
+        HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
+    },
+};
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
@@ -176,10 +182,37 @@ void editor_update_syntax(EditorRow *row) {
     return;
 
   int prev_sep = 1;
+  int in_string = 0;
 
   for (int i = 0; i < row->r_size; i++) {
     char c = row->r_chars[i];
     uint8_t prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
+
+    // HL_STRING
+    if (E.syntax->flags & HL_HIGHLIGHT_STRINGS) {
+      if (in_string) {
+        row->hl[i] = HL_STRING;
+
+        // Escape Sequences
+        if (c == '\\' && i + 1 < row->r_size) {
+          row->hl[i + 1] = HL_STRING;
+          i++;
+          continue;
+        }
+        // Is closing string
+        if (c == in_string)
+          in_string = 0;
+
+        prev_sep = 1;
+
+        continue;
+      } else if (c == '"' || c == '\'' || c == '`') {
+        in_string = c;
+        row->hl[i] = HL_STRING;
+
+        continue;
+      }
+    }
 
     // HL_NUMBER
     if (E.syntax->flags & HL_HIGHLIGHT_NUMBERS) {
@@ -199,12 +232,17 @@ const char *TEXT_RESET = "\x1b[39m";
 
 const char *TEXT_RED = "\x1b[31m";
 const char *TEXT_BLUE = "\x1b[34m";
+const char *TEXT_MAGENTA = "\x1b[35m";
 const char *TEXT_WHITE = "\x1b[37m";
 
 const char *editor_syntax_to_color(int hl) {
   switch (hl) {
+    // Literals
   case HL_NUMBER:
     return TEXT_RED;
+  case HL_STRING:
+    return TEXT_MAGENTA;
+
   case HL_MATCH:
     return TEXT_BLUE;
   default:
