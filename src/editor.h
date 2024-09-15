@@ -73,12 +73,17 @@ struct EditorConfig {
 
   int num_rows;
   EditorRow *row;
+
+  // File
+  char *filename;
   int dirty;
 
-  // Metadata
-  char *filename;
+  // Status Bar
   char status_msg[80];
   time_t status_msg_time;
+
+  // Metadata
+  struct EditorSyntax *syntax;
   struct termios orig_termios;
 };
 

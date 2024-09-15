@@ -15,11 +15,20 @@ void editor_row_del_char(EditorRow *row, int at);
 
 // Syntax Hightlight
 
+#define HL_HIGHLIGHT_NUMBERS (1 << 0)
+
+struct EditorSyntax {
+  char *filetype;
+  char **filematch;
+  int flags;
+};
+
 extern const char *TEXT_RESET;
 extern const char *TEXT_RED;
 extern const char *TEXT_WHITE;
 
 void editor_update_syntax(EditorRow *row);
 const char *editor_syntax_to_color(int hl);
+void editor_select_syntax_highlight(void);
 
 #endif // ROW_OPERATIONS_H

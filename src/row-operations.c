@@ -154,7 +154,16 @@ void editor_row_del_char(EditorRow *row, int at) {
   E.dirty++;
 }
 
+// Filetypes
+
+char *C_HL_extensions[] = {".c", ".h", ".cpp", NULL};
+
+struct EditorSyntax HLDB[] = {{"c", C_HL_extensions, HL_HIGHLIGHT_NUMBERS}};
+
+#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
+
 // Syntax Hightlight
+
 int is_separator(int c) {
   return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != NULL;
 }
@@ -163,17 +172,23 @@ void editor_update_syntax(EditorRow *row) {
   row->hl = realloc(row->hl, row->r_size);
   memset(row->hl, HL_NORMAL, row->r_size);
 
+  if (E.syntax == NULL)
+    return;
+
   int prev_sep = 1;
 
   for (int i = 0; i < row->r_size; i++) {
     char c = row->r_chars[i];
     uint8_t prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
-    if (isdigit(c) && (prev_sep || prev_hl == HL_NUMBER) ||
-        (c == '.' && prev_hl == HL_NUMBER)) {
-      row->hl[i] = HL_NUMBER;
-      prev_sep = 0;
-      continue;
+    // HL_NUMBER
+    if (E.syntax->flags & HL_HIGHLIGHT_NUMBERS) {
+      if (isdigit(c) && (prev_sep || prev_hl == HL_NUMBER) ||
+          (c == '.' && prev_hl == HL_NUMBER)) {
+        row->hl[i] = HL_NUMBER;
+        prev_sep = 0;
+        continue;
+      }
     }
 
     prev_sep = is_separator(c);
@@ -194,5 +209,34 @@ const char *editor_syntax_to_color(int hl) {
     return TEXT_BLUE;
   default:
     return TEXT_WHITE;
+  }
+}
+
+void editor_select_syntax_highlight(void) {
+  E.syntax = NULL;
+  if (E.filename == NULL)
+    return;
+
+  char *ext = strrchr(E.filename, '.');
+
+  for (size_t i = 0; i < HLDB_ENTRIES; i++) {
+    struct EditorSyntax *s = &HLDB[i];
+
+    for (size_t j = 0; s->filematch[i]; i++) {
+      int is_ext = (s->filematch[i][0] == '.');
+      int ext_match = (ext && strcmp(ext, s->filematch[i]) == 0);
+      int filename_contain_pattern =
+          (strstr(E.filename, s->filematch[i]) != NULL);
+
+      if ((is_ext && ext_match) || (!is_ext && filename_contain_pattern)) {
+        E.syntax = s;
+
+        for (size_t file_row = 0; file_row < E.num_rows; file_row++) {
+          editor_update_syntax(&E.row[file_row]);
+        }
+
+        return;
+      }
+    }
   }
 }

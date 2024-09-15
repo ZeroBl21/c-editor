@@ -111,11 +111,14 @@ void init_editor(void) {
 
       .num_rows = 0,
       .row = NULL,
-      .dirty = 0,
 
       .filename = NULL,
+      .dirty = 0,
+
       .status_msg = {'\0'},
       .status_msg_time = 0,
+
+      .syntax = NULL,
   };
 
   if (get_window_size(&E.screen_rows, &E.screen_cols) == -1) {

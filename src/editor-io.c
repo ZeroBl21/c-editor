@@ -127,7 +127,8 @@ void editor_draw_status_bar(struct abuf *ab) {
     len = E.screen_cols;
   }
 
-  int r_len = snprintf(r_status, sizeof(r_status), "%d/%d ", E.cursor_y + 1,
+  int r_len = snprintf(r_status, sizeof(r_status), "%s | %d/%d ",
+                       E.syntax ? E.syntax->filetype : "no ft", E.cursor_y + 1,
                        E.num_rows);
 
   ab_append(ab, status, len);

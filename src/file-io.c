@@ -44,6 +44,8 @@ void editor_open(char *filename) {
     die("fopen");
   }
 
+  editor_select_syntax_highlight();
+
   free(E.filename);
   E.filename = strdup(filename);
 
@@ -73,11 +75,13 @@ void editor_open(char *filename) {
 
 void editor_save(void) {
   if (E.filename == NULL) {
-    E.filename = editor_prompt("Save as: %s", NULL);
+    E.filename = editor_prompt("Save as: %s (ESC to cancel)", NULL);
     if (E.filename == NULL) {
       editor_set_status_message("Save Aborted");
       return;
     }
+
+    editor_select_syntax_highlight();
   }
 
   int len;
