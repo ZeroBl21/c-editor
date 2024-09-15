@@ -44,10 +44,10 @@ void editor_open(char *filename) {
     die("fopen");
   }
 
-  editor_select_syntax_highlight();
-
   free(E.filename);
   E.filename = strdup(filename);
+
+  editor_select_syntax_highlight();
 
   char *line = NULL;
   size_t line_cap = 0;
