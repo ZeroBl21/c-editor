@@ -157,11 +157,17 @@ void editor_row_del_char(EditorRow *row, int at) {
 // Filetypes
 
 char *C_HL_extensions[] = {".c", ".h", ".cpp", NULL};
+char *C_HL_keywords[] = {"switch",    "if",      "while",   "for",    "break",
+                         "continue",  "return",  "else",    "struct", "union",
+                         "typedef",   "static",  "enum",    "class",  "case",
+                         "int|",      "long|",   "double|", "float|", "char|",
+                         "unsigned|", "signed|", "void|",   NULL};
 
 struct EditorSyntax HLDB[] = {
     {
         .filetype = "c",
         .filematch = C_HL_extensions,
+        .keywords = C_HL_keywords,
         .singleline_comment_start = "//",
         .flags = HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
     },
@@ -181,6 +187,8 @@ void editor_update_syntax(EditorRow *row) {
 
   if (E.syntax == NULL)
     return;
+
+  char **keywords = E.syntax->keywords;
 
   char *scs = E.syntax->singleline_comment_start;
   int scs_len = scs ? strlen(scs) : 0;
@@ -236,6 +244,32 @@ void editor_update_syntax(EditorRow *row) {
       }
     }
 
+    // keywords
+    if (prev_sep) {
+      int j;
+      for (j = 0; keywords[j]; j++) {
+        int kw_len = strlen(keywords[j]);
+
+        int kw2 = keywords[j][kw_len - 1] == '|';
+        if (kw2) {
+          kw_len--;
+        }
+
+        if (!strncmp(&row->r_chars[i], keywords[j], kw_len) &&
+            is_separator(row->r_chars[i + kw_len])) {
+          memset(&row->hl[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1, kw_len);
+          i += kw_len;
+
+          break;
+        }
+      }
+
+      if (keywords[j] != NULL) {
+        prev_sep = 0;
+        continue;
+      }
+    }
+
     prev_sep = is_separator(c);
   }
 }
@@ -243,6 +277,8 @@ void editor_update_syntax(EditorRow *row) {
 const char *TEXT_RESET = "\x1b[39m";
 
 const char *TEXT_RED = "\x1b[31m";
+const char *TEXT_GREEN = "\x1b[32m";
+const char *TEXT_YELLOW = "\x1b[33m";
 const char *TEXT_BLUE = "\x1b[34m";
 const char *TEXT_MAGENTA = "\x1b[35m";
 const char *TEXT_CYAN = "\x1b[36m";
@@ -260,6 +296,10 @@ const char *editor_syntax_to_color(int hl) {
     return TEXT_BLUE;
   case HL_COMMENT:
     return TEXT_CYAN;
+  case HL_KEYWORD1:
+    return TEXT_GREEN;
+  case HL_KEYWORD2:
+    return TEXT_YELLOW;
 
   default:
     return TEXT_WHITE;

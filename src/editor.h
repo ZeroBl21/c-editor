@@ -52,7 +52,9 @@ enum editorHighlight {
   HL_NUMBER,
   HL_STRING,
   HL_MATCH,
-  HL_COMMENT
+  HL_COMMENT,
+  HL_KEYWORD1,
+  HL_KEYWORD2,
 };
 
 // Types
