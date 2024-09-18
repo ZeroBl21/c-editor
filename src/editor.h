@@ -53,6 +53,7 @@ enum editorHighlight {
   HL_STRING,
   HL_MATCH,
   HL_COMMENT,
+  HL_MLCOMMENT,
   HL_KEYWORD1,
   HL_KEYWORD2,
 };
@@ -60,12 +61,14 @@ enum editorHighlight {
 // Types
 
 typedef struct {
+  int idx;
   int size;
   int r_size;
   char *chars;
   char *r_chars;
 
   uint8_t *hl;
+  int hl_open_comment;
 } EditorRow;
 
 struct EditorConfig {
