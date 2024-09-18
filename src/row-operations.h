@@ -28,8 +28,14 @@ struct EditorSyntax {
 };
 
 extern const char *TEXT_RESET;
+
 extern const char *TEXT_RED;
 extern const char *TEXT_WHITE;
+extern const char *TEXT_GREEN;
+extern const char *TEXT_YELLOW;
+extern const char *TEXT_BLUE;
+extern const char *TEXT_MAGENTA;
+extern const char *TEXT_CYAN;
 
 void editor_update_syntax(EditorRow *row);
 const char *editor_syntax_to_color(int hl);
