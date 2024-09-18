@@ -302,7 +302,7 @@ void editor_update_syntax(EditorRow *row) {
         if (!strncmp(&row->r_chars[i], keywords[j], kw_len) &&
             is_separator(row->r_chars[i + kw_len])) {
           memset(&row->hl[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1, kw_len);
-          i += kw_len;
+          i += kw_len -1;
 
           break;
         }
