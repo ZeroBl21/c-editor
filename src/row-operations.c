@@ -157,11 +157,12 @@ void editor_row_del_char(EditorRow *row, int at) {
 // Filetypes
 
 char *C_HL_extensions[] = {".c", ".h", ".cpp", NULL};
-char *C_HL_keywords[] = {"switch",    "if",      "while",   "for",    "break",
-                         "continue",  "return",  "else",    "struct", "union",
-                         "typedef",   "static",  "enum",    "class",  "case",
-                         "int|",      "long|",   "double|", "float|", "char|",
-                         "unsigned|", "signed|", "void|",   NULL};
+char *C_HL_keywords[] = {
+    "switch",   "if",        "while",   "for",     "break",
+    "continue", "return",    "else",    "struct",  "union",
+    "typedef",  "static",    "enum",    "class",   "case",
+    "default:|", "int|",      "long|",   "double|", "float|",
+    "char|",    "unsigned|", "signed|", "void|",   NULL};
 
 struct EditorSyntax HLDB[] = {
     {
