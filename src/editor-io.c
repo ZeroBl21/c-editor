@@ -87,7 +87,15 @@ void editor_draw_rows(struct abuf *ab) {
       char *current_color = NULL;
 
       for (int j = 0; j < len; j++) {
-        if (hl[j] == HL_NORMAL) {
+        if (iscntrl(c[j])) {
+          char sym = (c[j] <= 26) ? '@' + c[j] : '?';
+          ab_append(ab, INVERSE_FORMATTING, 4);
+          ab_append(ab, &sym, 1);
+          ab_append(ab, RESET_FORMATTING, 3);
+          if (current_color != NULL) {
+            ab_append(ab, current_color, strlen(current_color));
+          }
+        } else if (hl[j] == HL_NORMAL) {
           if (current_color != NULL) {
             ab_append(ab, TEXT_RESET, 5);
             current_color = NULL;
