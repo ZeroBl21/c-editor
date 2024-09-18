@@ -160,9 +160,10 @@ char *C_HL_extensions[] = {".c", ".h", ".cpp", NULL};
 
 struct EditorSyntax HLDB[] = {
     {
-        "c",
-        C_HL_extensions,
-        HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
+        .filetype = "c",
+        .filematch = C_HL_extensions,
+        .singleline_comment_start = "//",
+        .flags = HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
     },
 };
 
@@ -181,12 +182,23 @@ void editor_update_syntax(EditorRow *row) {
   if (E.syntax == NULL)
     return;
 
+  char *scs = E.syntax->singleline_comment_start;
+  int scs_len = scs ? strlen(scs) : 0;
+
   int prev_sep = 1;
   int in_string = 0;
 
   for (int i = 0; i < row->r_size; i++) {
     char c = row->r_chars[i];
     uint8_t prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
+
+    // HL_COMMENT
+    if (scs_len && !in_string) {
+      if (!strncmp(&row->r_chars[i], scs, scs_len)) {
+        memset(&row->hl[i], HL_COMMENT, row->r_size - i);
+        break;
+      }
+    }
 
     // HL_STRING
     if (E.syntax->flags & HL_HIGHLIGHT_STRINGS) {
@@ -233,11 +245,12 @@ const char *TEXT_RESET = "\x1b[39m";
 const char *TEXT_RED = "\x1b[31m";
 const char *TEXT_BLUE = "\x1b[34m";
 const char *TEXT_MAGENTA = "\x1b[35m";
+const char *TEXT_CYAN = "\x1b[36m";
 const char *TEXT_WHITE = "\x1b[37m";
 
 const char *editor_syntax_to_color(int hl) {
   switch (hl) {
-    // Literals
+  // Literals
   case HL_NUMBER:
     return TEXT_RED;
   case HL_STRING:
@@ -245,6 +258,9 @@ const char *editor_syntax_to_color(int hl) {
 
   case HL_MATCH:
     return TEXT_BLUE;
+  case HL_COMMENT:
+    return TEXT_CYAN;
+
   default:
     return TEXT_WHITE;
   }

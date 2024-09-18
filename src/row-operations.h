@@ -21,6 +21,8 @@ void editor_row_del_char(EditorRow *row, int at);
 struct EditorSyntax {
   char *filetype;
   char **filematch;
+  char *singleline_comment_start;
+
   int flags;
 };
 
